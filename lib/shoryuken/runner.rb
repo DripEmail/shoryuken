@@ -8,7 +8,6 @@ require 'shoryuken'
 
 module Shoryuken
   # rubocop:disable Lint/InheritException
-  # rubocop:disable Metrics/AbcSize
   # See: https://github.com/mperham/sidekiq/blob/33f5d6b2b6c0dfaab11e5d39688cab7ebadc83ae/lib/sidekiq/cli.rb#L20
   class Shutdown < Interrupt; end
 
@@ -19,7 +18,7 @@ module Shoryuken
     def run(options)
       self_read, self_write = IO.pipe
 
-      %w(INT TERM USR1 TTIN).each do |sig|
+      %w[INT TERM USR1 TSTP TTIN].each do |sig|
         begin
           trap sig do
             self_write.puts(sig)
@@ -106,6 +105,12 @@ module Shoryuken
       exit 0
     end
 
+    def execute_terminal_stop
+      logger.info { 'Received TSTP, will stop accepting new work' }
+
+      @launcher.stop
+    end
+
     def print_threads_backtrace
       Thread.list.each do |thread|
         logger.info { "Thread TID-#{thread.object_id.to_s(36)} #{thread['label']}" }
@@ -123,8 +128,9 @@ module Shoryuken
       case sig
       when 'USR1' then execute_soft_shutdown
       when 'TTIN' then print_threads_backtrace
+      when 'TSTP' then execute_terminal_stop
       when 'TERM', 'INT'
-        logger.info { "Received #{sig}, will shutdown down" }
+        logger.info { "Received #{sig}, will shutdown" }
 
         raise Interrupt
       end

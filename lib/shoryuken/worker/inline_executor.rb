@@ -2,7 +2,7 @@ module Shoryuken
   module Worker
     class InlineExecutor
       class << self
-        def perform_async(worker_class, body, options = {})
+        def perform_async(worker_class, body, _options = {})
           body = JSON.dump(body) if body.is_a?(Hash)
 
           sqs_msg = OpenStruct.new(
@@ -16,11 +16,20 @@ module Shoryuken
             delete: nil
           )
 
-          worker_class.new.perform(sqs_msg, BodyParser.parse(worker_class, sqs_msg))
+          call(worker_class, sqs_msg)
         end
 
         def perform_in(worker_class, _interval, body, options = {})
-          perform_async(worker_class, body, options)
+          worker_class.perform_async(body, options)
+        end
+
+        private
+
+        def call(worker_class, sqs_msg)
+          parsed_body = BodyParser.parse(worker_class, sqs_msg)
+          batch = worker_class.shoryuken_options_hash['batch']
+          args = batch ? [[sqs_msg], [parsed_body]] : [sqs_msg, parsed_body]
+          worker_class.new.perform(*args)
         end
       end
     end

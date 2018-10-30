@@ -121,10 +121,10 @@ RSpec.describe Shoryuken::Queue do
     it 'accepts SQS request parameters' do
       # https://docs.aws.amazon.com/sdkforruby/api/Aws/SQS/Client.html#send_message_batch-instance_method
       expect(sqs).to(
-        receive(:send_message_batch).with(hash_including(entries: [{id: '0', message_body: 'msg1'}, {id: '1', message_body: 'msg2'}]))
+        receive(:send_message_batch).with(hash_including(entries: [{ id: '0', message_body: 'msg1' }, { id: '1', message_body: 'msg2' }]))
       )
 
-      subject.send_messages(entries: [{id: '0', message_body: 'msg1'}, {id: '1', message_body: 'msg2'}])
+      subject.send_messages(entries: [{ id: '0', message_body: 'msg1' }, { id: '1', message_body: 'msg2' }])
     end
 
     it 'accepts an array of messages' do
@@ -188,14 +188,13 @@ RSpec.describe Shoryuken::Queue do
         )
       )
 
-      subject.send_messages(%w(msg1 msg2))
+      subject.send_messages(%w[msg1 msg2])
     end
   end
 
   describe '#fifo?' do
+    let(:attribute_response) { double 'Aws::SQS::Types::GetQueueAttributesResponse' }
     before do
-      attribute_response = double 'Aws::SQS::Types::GetQueueAttributesResponse'
-
       allow(attribute_response).to(
         receive(:attributes).and_return('FifoQueue' => fifo.to_s, 'ContentBasedDeduplication' => 'true')
       )
@@ -209,12 +208,30 @@ RSpec.describe Shoryuken::Queue do
       let(:fifo) { true }
 
       specify { expect(subject.fifo?).to be }
+
+      it 'memoizes response' do
+        expect(sqs).to(
+          receive(:get_queue_attributes).with(queue_url: queue_url, attribute_names: ['All']).and_return(attribute_response)
+        ).exactly(1).times
+
+        subject.fifo?
+        subject.fifo?
+      end
     end
 
     context 'when queue is not FIFO' do
       let(:fifo) { false }
 
       specify { expect(subject.fifo?).to_not be }
+
+      it 'memoizes response' do
+        expect(sqs).to(
+          receive(:get_queue_attributes).with(queue_url: queue_url, attribute_names: ['All']).and_return(attribute_response)
+        ).exactly(1).times
+
+        subject.fifo?
+        subject.fifo?
+      end
     end
   end
 end
