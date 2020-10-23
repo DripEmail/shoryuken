@@ -61,7 +61,7 @@ module ActiveJob
         end
 
         msg[:message_body] = body
-        msg[:message_attributes] = MESSAGE_ATTRIBUTES
+        msg[:message_attributes] = MESSAGE_ATTRIBUTES.dup
 
         msg.merge(options)
       end
