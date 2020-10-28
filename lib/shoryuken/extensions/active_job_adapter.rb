@@ -53,15 +53,17 @@ module ActiveJob
       def message(queue, job, options = {})
         body = job.serialize
 
-        msg = {}
+        message_attributes = options.delete(:message_attributes) || {}
+
+        msg = {
+          message_body: body,
+          message_attributes: message_attributes.merge(MESSAGE_ATTRIBUTES)
+        }
 
         if queue.fifo?
           # See https://github.com/phstc/shoryuken/issues/457
           msg[:message_deduplication_id] = Digest::SHA256.hexdigest(JSON.dump(body.except('job_id')))
         end
-
-        msg[:message_body] = body
-        msg[:message_attributes] = MESSAGE_ATTRIBUTES.dup
 
         msg.merge(options)
       end
