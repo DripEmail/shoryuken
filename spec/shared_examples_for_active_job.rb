@@ -19,6 +19,9 @@ RSpec.shared_examples 'active_job_adapters' do
     specify do
       expect(queue).to receive(:send_message) do |hash|
         expect(hash[:message_deduplication_id]).to_not be
+        expect(hash[:message_attributes]['shoryuken_class'][:string_value]).to eq(described_class::JobWrapper.to_s)
+        expect(hash[:message_attributes]['shoryuken_class'][:data_type]).to eq("String")
+        expect(hash[:message_attributes].keys).to eq(['shoryuken_class'])
       end
       expect(Shoryuken).to receive(:register_worker).with(job.queue_name, described_class::JobWrapper)
 
@@ -50,7 +53,6 @@ RSpec.shared_examples 'active_job_adapters' do
         }
 
         expect(queue).to receive(:send_message) do |hash|
-          expect(hash[:message_deduplication_id]).to_not be
           expect(hash[:message_attributes]['shoryuken_class'][:string_value]).to eq(described_class::JobWrapper.to_s)
           expect(hash[:message_attributes]['shoryuken_class'][:data_type]).to eq("String")
           expect(hash[:message_attributes]['tracer_id'][:string_value]).to eq(custom_message_attributes['tracer_id'][:string_value])
