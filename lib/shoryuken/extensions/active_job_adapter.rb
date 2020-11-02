@@ -50,14 +50,29 @@ module ActiveJob
         delay
       end
 
+      class JobWrapper #:nodoc:
+        include Shoryuken::Worker
+
+        shoryuken_options body_parser: :json, auto_delete: true
+
+        def perform(_sqs_msg, hash)
+          Base.execute hash
+        end
+      end
+
       def message(queue, job, options = {})
         body = job.serialize
 
         message_attributes = options.delete(:message_attributes) || {}
 
         msg = {
-          message_body: body,
-          message_attributes: message_attributes.merge(MESSAGE_ATTRIBUTES)
+          message_attributes: message_attributes.merge(
+            'shoryuken_class' => {
+              string_value: JobWrapper.to_s,
+              data_type: 'String'
+            }
+          ),
+          message_body: body
         }
 
         if queue.fifo?
@@ -71,23 +86,6 @@ module ActiveJob
       def register_worker!(job)
         Shoryuken.register_worker(job.queue_name, JobWrapper)
       end
-
-      class JobWrapper #:nodoc:
-        include Shoryuken::Worker
-
-        shoryuken_options body_parser: :json, auto_delete: true
-
-        def perform(_sqs_msg, hash)
-          Base.execute hash
-        end
-      end
-
-      MESSAGE_ATTRIBUTES = {
-        'shoryuken_class' => {
-          string_value: JobWrapper.to_s,
-          data_type: 'String'
-        }
-      }.freeze
     end
   end
 end
